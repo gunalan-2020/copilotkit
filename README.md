@@ -1,98 +1,181 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# CopilotKit Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend with PostgreSQL, OAuth authentication, and dashboard/chart/chat management.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- **OAuth Authentication**: Google & GitHub login
+- **User Management**: Profile management with JWT tokens
+- **Dashboards**: Create and manage multiple dashboards per user
+- **Charts**: Add charts to dashboards with customizable config/data
+- **Chat**: Store conversation history with ordered messages
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech Stack
 
-## Project setup
+- NestJS + TypeScript
+- PostgreSQL + TypeORM
+- Passport (Google, GitHub, JWT)
+- Class Validator
+
+## Quick Start
 
 ```bash
-$ npm install
+# Install dependencies
+npm install
+
+# Copy environment file
+cp .env.example .env
+
+# Create database
+createdb copilotkit
+
+# Run development server
+npm run start:dev
 ```
 
-## Compile and run the project
+## Environment Variables
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_NAME=copilotkit
+
+# JWT
+JWT_SECRET=your-secret-key
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
+
+# Frontend
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
+PORT=3000
+```
+
+## Database Schema
+
+```
+User (1) ----< (N) Dashboard (1) ----< (N) Chart
+                         |
+                         └---- (1) Chat (1) ----< (N) ChatMessage
+```
+
+## API Endpoints
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/auth/google` | Login with Google |
+| GET | `/auth/google/callback` | Google callback |
+| GET | `/auth/github` | Login with GitHub |
+| GET | `/auth/github/callback` | GitHub callback |
+
+### Users
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/users/me` | Get current user |
+| GET | `/users/:id` | Get user by ID |
+| PUT | `/users/:id` | Update user |
+
+### Dashboards
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/dashboards` | Create dashboard |
+| GET | `/dashboards` | List user dashboards |
+| GET | `/dashboards/:id` | Get dashboard |
+| PUT | `/dashboards/:id` | Update dashboard |
+| DELETE | `/dashboards/:id` | Delete dashboard |
+
+### Charts
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/charts` | Create chart |
+| GET | `/charts/dashboard/:dashboardId` | List dashboard charts |
+| GET | `/charts/:id` | Get chart |
+| PUT | `/charts/:id` | Update chart |
+| DELETE | `/charts/:id` | Delete chart |
+
+### Chat
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/chats/dashboard/:dashboardId` | Get chat |
+| GET | `/chats/dashboard/:dashboardId/messages` | Get messages |
+| POST | `/chats/dashboard/:dashboardId/messages` | Add message |
+| DELETE | `/chats/dashboard/:dashboardId/messages` | Clear messages |
+| PUT | `/chats/dashboard/:dashboardId` | Update chat title |
+
+## DTO Examples
+
+### Create Dashboard
+```json
+{
+  "name": "My Dashboard",
+  "description": "Sales analytics"
+}
+```
+
+### Create Chart
+```json
+{
+  "name": "Revenue Chart",
+  "type": "bar",
+  "config": { "xAxis": "month", "yAxis": "revenue" },
+  "data": [{ "month": "Jan", "revenue": 1000 }],
+  "dashboardId": "uuid"
+}
+```
+
+### Add Chat Message
+```json
+{
+  "content": "Hello, assistant!",
+  "role": "user"
+}
+```
+
+## Getting OAuth Credentials
+
+### Google OAuth
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create project → APIs & Services → OAuth consent screen
+3. Create OAuth client ID (Web application)
+4. Add redirect URI: `http://localhost:3000/auth/google/callback`
+5. Copy Client ID and Client Secret
+
+### GitHub OAuth
+1. Go to GitHub Settings → Developer settings → OAuth Apps
+2. New OAuth App
+3. Add callback URL: `http://localhost:3000/auth/github/callback`
+4. Copy Client ID and generate Client Secret
+
+## Production Checklist
+
+- [ ] Set `NODE_ENV=production`
+- [ ] Use strong `JWT_SECRET`
+- [ ] Configure proper CORS origin
+- [ ] Run migrations instead of `synchronize`
+- [ ] Enable HTTPS
+- [ ] Set up proper logging
+
+## Development
 
 ```bash
-# development
-$ npm run start
+# Build
+npm run build
 
-# watch mode
-$ npm run start:dev
+# Lint
+npm run lint
 
-# production mode
-$ npm run start:prod
+# Run tests
+npm run test
 ```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
