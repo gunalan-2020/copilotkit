@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsObject } from 'class-validator';
 
 export class CreateDashboardDto {
   @IsString()
@@ -11,6 +11,10 @@ export class CreateDashboardDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsObject()
+  @IsOptional()
+  data?: Record<string, any>;
 }
 
 export class UpdateDashboardDto {
@@ -25,4 +29,8 @@ export class UpdateDashboardDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsObject()
+  @IsOptional()
+  data?: Record<string, any>;
 }

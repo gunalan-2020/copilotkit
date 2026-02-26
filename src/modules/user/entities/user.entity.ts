@@ -31,6 +31,9 @@ export class User {
   @Column({ nullable: true })
   provider: string;
 
+  @Column({ nullable: true })
+  password: string;
+
   @OneToMany(() => Dashboard, (dashboard) => dashboard.user, {
     cascade: true,
     eager: true,

@@ -27,6 +27,9 @@ export class Dashboard {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ type: 'jsonb', nullable: true })
+  data: Record<string, any>;
+
   @ManyToOne(() => User, (user) => user.dashboards, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;

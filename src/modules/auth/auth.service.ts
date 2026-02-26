@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User } from '../user/entities/user.entity';
+import { SignupDto, LoginDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -45,5 +47,49 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return user;
+  }
+
+  async signup(signupDto: SignupDto): Promise<{ user: User; accessToken: string }> {
+    const { email, password, name } = signupDto;
+
+    const existingUser = await this.userRepository.findOne({ where: { email } });
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = this.userRepository.create({
+      email,
+      password: hashedPassword,
+      name,
+      provider: 'local',
+    });
+
+    await this.userRepository.save(user);
+
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+
+    return { user, accessToken };
+  }
+
+  async login(loginDto: LoginDto): Promise<{ user: User; accessToken: string }> {
+    const { email, password } = loginDto;
+
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+
+    return { user, accessToken };
   }
 }
