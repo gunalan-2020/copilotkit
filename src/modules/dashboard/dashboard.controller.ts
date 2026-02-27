@@ -8,6 +8,8 @@ import {
   Param,
   UseGuards,
   Request,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { CreateDashboardDto, UpdateDashboardDto } from './dto/dashboard.dto';
@@ -34,12 +36,20 @@ export class DashboardController {
   }
 
   @Put(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Request() req: any,
     @Body() updateDto: UpdateDashboardDto,
   ) {
-    return this.dashboardService.update(id, req.user.id, updateDto);
+    try {
+      return await this.dashboardService.update(id, req.user.id, updateDto);
+    } catch (error) {
+      console.error('Update dashboard error:', error);
+      throw new HttpException(
+        { message: error.message, error: error.response || 'Internal error', stack: error.stack },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Delete(':id')

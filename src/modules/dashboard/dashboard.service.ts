@@ -28,14 +28,14 @@ export class DashboardService {
     private chatRepository: Repository<Chat>,
     @InjectRepository(Chart)
     private chartRepository: Repository<Chart>,
-  ) {}
+  ) { }
 
   private async saveElementsAsCharts(dashboardId: string, elements: DashboardElement[]): Promise<void> {
-    const chartsToSave: Partial<Chart>[] = [];
+    const chartsToSave: Chart[] = [];
 
     for (const element of elements) {
       if (element.type === 'chart' || element.type === 'metric' || element.type === 'table') {
-        chartsToSave.push({
+        const chart = this.chartRepository.create({
           name: element.title || element.label || element.id,
           type: element.type,
           config: {
@@ -48,6 +48,7 @@ export class DashboardService {
           dashboardId,
           isActive: true,
         });
+        chartsToSave.push(chart);
       }
     }
 
@@ -62,6 +63,17 @@ export class DashboardService {
   }
 
   async create(userId: string, createDto: CreateDashboardDto): Promise<Dashboard> {
+    const existingDashboard = await this.dashboardRepository.findOne({
+      where: { name: createDto.name, userId },
+    });
+    if (existingDashboard) {
+      return this.update(existingDashboard.id, userId, {
+        name: createDto.name,
+        description: createDto.description,
+        data: createDto.data,
+      });
+    }
+
     const dashboard = this.dashboardRepository.create({
       name: createDto.name,
       description: createDto.description || '',
@@ -69,11 +81,6 @@ export class DashboardService {
       data: createDto.data || {},
     });
     const savedDashboard = await this.dashboardRepository.save(dashboard);
-
-    const chat = this.chatRepository.create({
-      dashboardId: savedDashboard.id,
-    });
-    await this.chatRepository.save(chat);
 
     if (createDto.data?.elements && createDto.data.elements.length > 0) {
       await this.saveElementsAsCharts(savedDashboard.id, createDto.data.elements);
@@ -93,7 +100,7 @@ export class DashboardService {
   async findOne(id: string, userId: string): Promise<Dashboard> {
     const dashboard = await this.dashboardRepository.findOne({
       where: { id },
-      relations: ['charts', 'chat', 'chat.messages'],
+      relations: ['charts', 'chat', 'chat.messages', 'user'],
     });
     if (!dashboard) {
       throw new NotFoundException('Dashboard not found');
@@ -105,16 +112,27 @@ export class DashboardService {
   }
 
   async update(id: string, userId: string, updateDto: UpdateDashboardDto): Promise<Dashboard> {
-    const dashboard = await this.findOne(id, userId);
-    
-    if (updateDto.name) dashboard.name = updateDto.name;
-    if (updateDto.description !== undefined) dashboard.description = updateDto.description;
-    if (updateDto.data?.elements) {
-      dashboard.data = updateDto.data;
-      await this.updateElementsAsCharts(id, updateDto.data.elements);
+    try {
+      const dashboard = await this.dashboardRepository.findOne({
+        where: { id, userId },
+      });
+      if (!dashboard) {
+        throw new NotFoundException('Dashboard not found');
+      }
+
+      if (updateDto.name) dashboard.name = updateDto.name;
+      if (updateDto.description !== undefined) dashboard.description = updateDto.description;
+      if (updateDto.data?.elements) {
+        dashboard.data = updateDto.data;
+        await this.updateElementsAsCharts(id, updateDto.data.elements);
+      }
+
+      const { charts, chat, user, ...dashboardData } = dashboard as any;
+      return this.dashboardRepository.save({ ...dashboardData, id });
+    } catch (error) {
+      console.error('Error updating dashboard:', error);
+      throw error;
     }
-    
-    return this.dashboardRepository.save(dashboard);
   }
 
   async remove(id: string, userId: string): Promise<void> {

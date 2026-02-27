@@ -17,6 +17,57 @@ export class ChatService {
     private dashboardRepository: Repository<Dashboard>,
   ) {}
 
+  async findOrCreateByUser(userId: string, createDto: CreateChatMessageDto): Promise<{ chat: Chat; message: ChatMessage; isNewDashboard: boolean }> {
+    const dashboards = await this.dashboardRepository.find({
+      where: { userId },
+      relations: ['chat'],
+      order: { createdAt: 'DESC' },
+      take: 1,
+    });
+
+    let chat: Chat;
+    let isNewDashboard = false;
+
+    if (dashboards.length === 0) {
+      const dashboard = this.dashboardRepository.create({
+        name: `Dashboard ${new Date().toLocaleDateString()}`,
+        description: '',
+        userId,
+        data: {},
+      });
+      const savedDashboard = await this.dashboardRepository.save(dashboard);
+
+      chat = this.chatRepository.create({
+        dashboardId: savedDashboard.id,
+      });
+      await this.chatRepository.save(chat);
+      isNewDashboard = true;
+    } else {
+      chat = dashboards[0].chat;
+      if (!chat) {
+        chat = this.chatRepository.create({
+          dashboardId: dashboards[0].id,
+        });
+        await this.chatRepository.save(chat);
+      }
+    }
+
+    const maxOrder = await this.messageRepository
+      .createQueryBuilder('message')
+      .where('message.chatId = :chatId', { chatId: chat.id })
+      .select('MAX(message.order)', 'max')
+      .getRawOne();
+
+    const message = this.messageRepository.create({
+      ...createDto,
+      chatId: chat.id,
+      order: (maxOrder?.max ?? -1) + 1,
+    });
+    const savedMessage = await this.messageRepository.save(message);
+
+    return { chat, message: savedMessage, isNewDashboard };
+  }
+
   async findOneByDashboard(dashboardId: string, userId: string): Promise<Chat> {
     const dashboard = await this.dashboardRepository.findOne({
       where: { id: dashboardId },
@@ -25,12 +76,14 @@ export class ChatService {
       throw new ForbiddenException('Access denied');
     }
 
-    const chat = await this.chatRepository.findOne({
+    let chat = await this.chatRepository.findOne({
       where: { dashboardId },
       relations: ['messages'],
     });
+    
     if (!chat) {
-      throw new NotFoundException('Chat not found');
+      chat = this.chatRepository.create({ dashboardId });
+      chat = await this.chatRepository.save(chat);
     }
     return chat;
   }

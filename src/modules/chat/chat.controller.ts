@@ -18,6 +18,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class ChatController {
   constructor(private chatService: ChatService) {}
 
+  @Post()
+  createOrAddMessage(
+    @Request() req: any,
+    @Body() createDto: CreateChatMessageDto,
+  ) {
+    return this.chatService.findOrCreateByUser(req.user.id, createDto);
+  }
+
   @Get('dashboard/:dashboardId')
   findOne(@Param('dashboardId') dashboardId: string, @Request() req: any) {
     return this.chatService.findOneByDashboard(dashboardId, req.user.id);
